@@ -8,11 +8,11 @@ import os
 import posixpath
 
 try:
-    from urllib.request import urlopen, Request
+    from urllib.request import urlopen, Request, ProxyHandler, build_opener, install_opener
     from urllib.error import HTTPError
     from urllib.parse import urlparse, urljoin
 except ImportError:  # Python 2.x
-    from urllib2 import urlopen, Request, HTTPError
+    from urllib2 import urlopen, Request, HTTPError, ProxyHandler, build_opener, install_opener
     from urlparse import urlparse, urljoin
 
 from m3u8.model import M3U8, Playlist, IFramePlaylist, Media, Segment
@@ -32,7 +32,7 @@ def loads(content):
     return M3U8(content)
 
 
-def load(uri, timeout=None, headers={}):
+def load(uri, timeout=None, headers={}, proxies={}):
     '''
     Retrieves the content from a given URI and returns a M3U8 object.
     Raises ValueError if invalid content or IOError if request fails.
@@ -40,14 +40,19 @@ def load(uri, timeout=None, headers={}):
     timeout happens when loading from uri
     '''
     if is_url(uri):
-        return _load_from_uri(uri, timeout, headers)
+        return _load_from_uri(uri, timeout, headers, proxies)
     else:
         return _load_from_file(uri)
 
 # Support for python3 inspired by https://github.com/szemtiv/m3u8/
 
 
-def _load_from_uri(uri, timeout=None, headers={}):
+def _load_from_uri(uri, timeout=None, headers={}, proxies={}):
+    # proxy setting
+    proxy_handler = ProxyHandler(proxies)
+    opener = build_opener(proxy_handler)
+    install_opener(opener)
+
     request = Request(uri, headers=headers)
     resource = urlopen(request, timeout=timeout)
     base_uri = _parsed_url(resource.geturl())
